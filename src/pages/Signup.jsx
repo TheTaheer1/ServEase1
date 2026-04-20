@@ -4,7 +4,8 @@ import { useAuth } from '../hooks/useAuth';
 import { ShieldCheck, Mail, Lock, User, ArrowRight, Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { signInWithPopup } from 'firebase/auth';
-import { auth, googleProvider } from '../services/firebase';
+import { auth, googleProvider, db } from '../services/firebase';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 function Signup() {
   const [email, setEmail] = useState('');
@@ -53,10 +54,25 @@ function Signup() {
     }
   };
 
+  // Ensure Firestore user exists after Google sign-in
+  const ensureFirestoreUser = async (firebaseUser) => {
+    const userRef = doc(db, 'users', firebaseUser.uid);
+    const userSnap = await getDoc(userRef);
+    if (!userSnap.exists()) {
+      await setDoc(userRef, {
+        email: firebaseUser.email,
+        name: firebaseUser.displayName || '',
+        role: 'user',
+        created_at: new Date().toISOString()
+      });
+    }
+  };
+
   const handleGoogleSignUp = async () => {
     setIsLoading(true);
     try {
-      await signInWithPopup(auth, googleProvider);
+      const result = await signInWithPopup(auth, googleProvider);
+      await ensureFirestoreUser(result.user);
       toast.success('Signed up with Google!');
       navigate('/dashboard');
     } catch (error) {
