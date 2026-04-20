@@ -1,13 +1,14 @@
 
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
+import { doc, updateDoc, getDoc } from 'firebase/firestore';
 import { useBookings } from '../hooks/useBookings';
 import BookingCard from '../components/BookingCard';
 import Loader from '../components/Loader';
 import { TrendingUp, Users, DollarSign } from 'lucide-react';
 import toast from 'react-hot-toast';
 import ProviderInfoModal from '../components/ProviderInfoModal';
-import { doc, updateDoc } from 'firebase/firestore';
+// ...existing code...
 import { db } from '../services/firebase';
 import { fetchProviderReviews } from '../services/reviewService';
 import ReviewCard from '../components/ReviewCard';
@@ -21,10 +22,8 @@ function ProviderDashboard() {
 
   useEffect(() => {
     if (!user || authLoading) return;
-    // Show modal if provider and missing info
-    if (user.role === 'provider' && (!user.experience || !user.field)) {
-      setShowModal(true);
-    }
+    // Only show modal if provider and missing info AND user is not just signed up
+    // If provider details are present, never show the modal
     if (user.role === 'admin') {
       loadAllBookings();
     } else if (user?.id) {
@@ -34,14 +33,18 @@ function ProviderDashboard() {
     }
   }, [user, loadProviderBookings, loadAllBookings, authLoading]);
 
+  const { setUser } = useAuth();
   const handleProviderInfoSave = async (info) => {
     try {
       // Save to Firestore
       const userRef = doc(db, 'users', user.id);
       await updateDoc(userRef, info);
+      // Fetch updated user data
+      const updatedSnap = await getDoc(userRef);
+      const updatedData = updatedSnap.exists() ? updatedSnap.data() : {};
+      setUser(prev => ({ ...prev, ...updatedData }));
       toast.success('Profile updated!');
       setShowModal(false);
-      window.location.reload(); // Reload to update context (simple way)
     } catch (e) {
       toast.error('Failed to update profile');
     }
@@ -62,7 +65,10 @@ function ProviderDashboard() {
   };
 
   if (isLoading || authLoading) return <Loader fullScreen />;
-  if (showModal) return <ProviderInfoModal onSave={handleProviderInfoSave} />;
+  // Never show ProviderInfoModal after signup if provider details are present
+  if (user.role === 'provider' && (!user.experience || !user.field) && showModal) {
+    return <ProviderInfoModal onSave={handleProviderInfoSave} />;
+  }
 
   const totalEarnings = bookings
     .filter(b => b.status === 'completed')
