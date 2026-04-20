@@ -47,8 +47,8 @@ export const AuthProvider = ({ children }) => {
     setUser(loggedInUser);
   };
 
-  const signup = async (email, password, name, role) => {
-    const newUser = await registerUser(email, password, name, role);
+  const signup = async (email, password, name, role, extra = {}) => {
+    const newUser = await registerUser(email, password, name, role, extra);
     setUser(newUser);
   };
 

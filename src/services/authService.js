@@ -32,10 +32,10 @@ export const loginUser = async (email, password) => {
   return { id: userCredential.user.uid, email, ...userData };
 };
 
-export const registerUser = async (email, password, name, role) => {
+export const registerUser = async (email, password, name, role, extra = {}) => {
   // Real Firebase only
   const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-  const user = { email, name, role, created_at: new Date().toISOString() };
+  const user = { email, name, role, created_at: new Date().toISOString(), ...extra };
   await setDoc(doc(db, 'users', userCredential.user.uid), user);
   return { id: userCredential.user.uid, ...user };
 };
